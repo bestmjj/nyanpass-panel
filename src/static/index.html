@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Nyanpass 聚合面板</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background: #f8f9fa;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .job {
+            background: white;
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        input, button, select {
+            padding: 6px 10px;
+            margin: 4px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #0d6efd;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        button:hover {
+            background: #0b5ed7;
+        }
+        button.delete {
+            background: #dc3545;
+        }
+        button.delete:hover {
+            background: #bb2d3b;
+        }
+        button.edit {
+            background: #198754;
+        }
+        button.edit:hover {
+            background: #157347;
+        }
+        .logout-btn {
+            background: #ffc107;
+            color: #212529;
+            float: right;
+            margin-bottom: 16px;
+        }
+        .logs {
+            background: #212529;
+            color: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin-top: 12px;
+            font-family: ui-monospace, SFMono-Regular, 'Courier New', monospace;
+            white-space: pre-wrap;
+            font-size: 13px;
+        }
+        label {
+            display: inline-block;
+            width: 160px;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+        input[type="text"],
+        input[type="password"],
+        input[type="number"] {
+            width: 220px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        th, td {
+            padding: 10px 8px;
+            border: 1px solid #dee2e6;
+            text-align: left;
+        }
+        th {
+            background: #e9ecef;
+            font-weight: 600;
+        }
+        .status-ok {
+            color: #198754;
+            font-weight: 500;
+        }
+        .dg-link {
+            color: #0d6efd;
+            text-decoration: none;
+            cursor: help;
+        }
+        .dg-link:hover {
+            text-decoration: underline;
+        }
+        h1, h2, h3 {
+            color: #212529;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .modal-header h3 {
+            margin: 0;
+        }
+        .modal-footer {
+            margin-top: 16px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>⚙️ Nyanpass 聚合面板</h1>
+    <button class="logout-btn" onclick="logout()">🚪 登出</button>
+    <div style="clear: both;"></div>
+
+    <div class="job">
+        <h3>➕ 添加配置</h3>
+        <p><label>名称:</label> <input type="text" id="new_name" value="配置"></p>
+        <p><label>用户名:</label> <input type="text" id="new_username" required></p>
+        <p><label>密码:</label> <input type="password" id="new_password" required></p>
+        <p><label>面板地址:</label> <input type="text" id="new_nya" placeholder="https://your-panel.com" value="https://nya.trp.sh"></p>
+        <p><label>CF Token:</label> <input type="password" id="new_cf" placeholder="留空则不更新 DNS"></p>
+        <!-- 主域名已删除 -->
+        <p>
+            <label>周期(分钟):</label>
+            <input type="number" id="new_interval" value="15" min="1">
+            <label>
+                <input type="checkbox" id="new_enabled" checked>
+                启用
+            </label>
+        </p>
+        <p><label>Telegram Bot Token:</label> <input type="password" id="new_tg_token" placeholder="123456:ABC..."></p>
+        <p><label>Telegram Chat ID:</label> <input type="text" id="new_tg_chat" placeholder="123456789"></p>
+        <button onclick="addJob()">✅ 添加</button>
+    </div>
+
+    <h2>📋 配置列表</h2>
+    <div id="jobs"></div>
+
+    <div style="margin-top: 20px;">
+        <button id="saveAllBtn" onclick="saveAll()">💾 保存并应用配置</button>
+        <button onclick="loadJobs()">🔄 刷新数据</button>
+    </div>
+</div>
+
+<!-- 编辑模态框 -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>✏️ 编辑配置</h3>
+            <button onclick="closeEditModal()" style="background:#6c757d; padding:2px 8px;">×</button>
+        </div>
+        <input type="hidden" id="edit_id">
+        <p><label>名称:</label> <input type="text" id="edit_name"></p>
+        <p><label>用户名:</label> <input type="text" id="edit_username" required></p>
+        <p><label>密码:</label> <input type="password" id="edit_password" placeholder="留空则不修改"></p>
+        <p><label>面板地址:</label> <input type="text" id="edit_nya" placeholder="https://your-panel.com"></p>
+        <p><label>CF Token:</label> <input type="password" id="edit_cf" placeholder="留空则不更新 DNS"></p>
+        <!-- 主域名已删除 -->
+        <p>
+            <label>周期(分钟):</label>
+            <input type="number" id="edit_interval" min="1">
+            <label>
+                <input type="checkbox" id="edit_enabled">
+                启用
+            </label>
+        </p>
+        <p><label>Telegram Bot Token:</label> <input type="password" id="edit_tg_token" placeholder="留空则不修改"></p>
+        <p><label>Telegram Chat ID:</label> <input type="text" id="edit_tg_chat" placeholder="123456789"></p>
+        <div class="modal-footer">
+            <button onclick="closeEditModal()" style="background:#6c757d;">取消</button>
+            <button onclick="saveEdit()" class="edit">💾 保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 设备组详情模态框 -->
+<div id="dgModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="dgModalTitle">设备组详情</h3>
+      <button onclick="closeDgModal()" style="background:#6c757d; padding:2px 8px;">×</button>
+    </div>
+    <pre id="dgModalContent" style="background:#f8f9fa; padding:12px; border-radius:6px; overflow:auto;"></pre>
+    <div class="modal-footer">
+      <button onclick="closeDgModal()" style="background:#6c757d;">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 域名管理模态框 -->
+<div id="domainModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="domainModalTitle">管理域名</h3>
+      <button onclick="closeDomainModal()" style="background:#6c757d; padding:2px 8px;">×</button>
+    </div>
+    <input type="hidden" id="domain_job_id">
+    <input type="hidden" id="domain_rule_id">
+    <p style="color:#666; margin-bottom:16px;">为此转发规则添加域名映射，IP 变动时自动更新 DNS</p>
+    <div id="domainList" style="margin-bottom:16px;"></div>
+    <div style="display:flex; gap:6px; margin-bottom:12px;">
+      <input type="text" id="newDomain" placeholder="例如: server1.example.com" style="flex:1;">
+      <button onclick="addDomainToRule()">➕ 添加</button>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeDomainModal()" style="background:#6c757d;">关闭</button>
+      <button onclick="saveDomainChanges()" class="edit">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let jobs = {};
+
+function logout() {
+    if (confirm('确定要登出吗？')) {
+        window.location.href = '/logout';
+    }
+}
+
+function addJob() {
+    const name = document.getElementById('new_name').value.trim();
+    const username = document.getElementById('new_username').value.trim();
+    const password = document.getElementById('new_password').value;
+    const nya_host = document.getElementById('new_nya').value.trim();
+    const cf_token = document.getElementById('new_cf').value || undefined;
+    // 主域名已删除
+    const interval = parseInt(document.getElementById('new_interval').value) || 15;
+    const enabled = document.getElementById('new_enabled').checked;
+    const tg_token = document.getElementById('new_tg_token').value || undefined;
+    const tg_chat = document.getElementById('new_tg_chat').value || undefined;
+
+    if (!username || !password) {
+        alert('请输入用户名和密码');
+        return;
+    }
+
+    const job = {
+        id: 'job_' + Date.now(),
+        name: name || '配置',
+        username: username,
+        password: password,
+        nya_host: nya_host || 'https://nya.trp.sh',
+        cf_token: cf_token,
+        interval_minutes: interval,
+        enabled: enabled,
+        telegram_bot_token: tg_token,
+        telegram_chat_id: tg_chat
+    };
+
+    jobs[job.id] = job;
+    render();
+}
+
+function deleteJob(id) {
+    if (confirm('确定删除此配置？')) {
+        delete jobs[id];
+        render();
+    }
+}
+
+function editJob(id) {
+    const job = jobs[id];
+    if (!job) return;
+
+    document.getElementById('edit_id').value = id;
+    document.getElementById('edit_name').value = job.name;
+    document.getElementById('edit_username').value = job.username;
+    document.getElementById('edit_password').value = '';
+    document.getElementById('edit_nya').value = job.nya_host;
+    document.getElementById('edit_cf').value = job.cf_token || '';
+    // 主域名已删除
+    document.getElementById('edit_interval').value = job.interval_minutes;
+    document.getElementById('edit_enabled').checked = job.enabled;
+    document.getElementById('edit_tg_token').value = job.telegram_bot_token || '';
+    document.getElementById('edit_tg_chat').value = job.telegram_chat_id || '';
+    document.getElementById('editModal').style.display = 'flex';
+}
+
+function saveEdit() {
+    const id = document.getElementById('edit_id').value;
+    if (!jobs[id]) return;
+
+    const name = document.getElementById('edit_name').value.trim();
+    const username = document.getElementById('edit_username').value.trim();
+    let password = document.getElementById('edit_password').value;
+    const nya_host = document.getElementById('edit_nya').value.trim();
+    const cf_token = document.getElementById('edit_cf').value || undefined;
+    const interval = parseInt(document.getElementById('edit_interval').value) || 15;
+    const enabled = document.getElementById('edit_enabled').checked;
+    const tg_token = document.getElementById('edit_tg_token').value || undefined;
+    const tg_chat = document.getElementById('edit_tg_chat').value || undefined;
+
+    if (!username) {
+        alert('请输入用户名');
+        return;
+    }
+
+    if (password === '') {
+        password = jobs[id].password;
+    }
+
+    const existing = jobs[id] || {};
+    const preserved = {
+        rule_domains: existing.rule_domains || {},
+        last_ct_ip: existing.last_ct_ip || undefined
+    };
+
+    jobs[id] = {
+        ...existing,
+        name: name || '配置',
+        username: username,
+        password: password,
+        nya_host: nya_host || 'https://nya.trp.sh',
+        cf_token: cf_token,
+        interval_minutes: interval,
+        enabled: enabled,
+        telegram_bot_token: tg_token,
+        telegram_chat_id: tg_chat,
+        rule_domains: preserved.rule_domains,
+        last_ct_ip: preserved.last_ct_ip
+    };
+
+    closeEditModal();
+    render();
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
+
+function runJob(id) {
+    fetch(`/api/run/${id}`, { method: 'POST' })
+        .then(res => {
+            if (res.ok) {
+                alert('任务已启动');
+            } else {
+                alert('启动失败');
+            }
+        })
+        .catch(() => alert('请求失败'));
+}
+
+function toggleLog(btn) {
+    const log = btn.nextElementSibling;
+    const isVisible = log.style.display === 'block';
+    log.style.display = isVisible ? 'none' : 'block';
+    if (!isVisible) {
+        log.scrollTop = log.scrollHeight;
+    }
+}
+
+function showDgDetail(jobId, dgId) {
+    const job = jobs[jobId];
+    if (!job || !job.device_groups) {
+        alert('设备组数据未加载（请先运行一次任务）');
+        return;
+    }
+    const dg = job.device_groups.find(g => g.id == dgId);
+    if (!dg) {
+        alert('未找到设备组');
+        return;
+    }
+
+    let configStr = dg.config || '';
+    try {
+        const parsed = JSON.parse(dg.config);
+        configStr = JSON.stringify(parsed, null, 2);
+    } catch (e) {}
+
+    const content = [
+        `ID: ${dg.id}`,
+        `名称: ${dg.name}`,
+        `类型: ${dg.type}`,
+        ...(dg.connect_host ? [`连接主机:\n${dg.connect_host}`] : []),
+        ...(dg.port_range ? [`端口范围: ${dg.port_range}`] : []),
+        ...(dg.note ? [`备注: ${dg.note}`] : []),
+        ...(dg.ratio !== undefined ? [`权重: ${dg.ratio}`] : []),
+        ...(dg.traffic_used !== undefined ? [`已用流量: ${(dg.traffic_used / (1024**3)).toFixed(2)} GiB`] : []),
+        ...(configStr ? [`配置:\n${configStr}`] : [])
+    ].join('\n');
+
+    document.getElementById('dgModalTitle').textContent = `设备组详情：${dg.name}`;
+    document.getElementById('dgModalContent').textContent = content;
+    document.getElementById('dgModal').style.display = 'flex';
+}
+
+function closeDgModal() {
+    document.getElementById('dgModal').style.display = 'none';
+}
+
+// ===== 域名管理 =====
+let currentDomains = [];
+
+function showDomainManager(jobId, ruleId, ruleName) {
+    const modal = document.getElementById('domainModal');
+    document.getElementById('domain_job_id').value = jobId;
+    document.getElementById('domain_rule_id').value = ruleId;
+    document.getElementById('domainModalTitle').textContent = `管理域名 - ${ruleName}`;
+    document.getElementById('newDomain').value = '';
+    
+    fetch(`/api/domains/${jobId}/${ruleId}`)
+        .then(r => r.json())
+        .then(d => {
+            currentDomains = d.domains || [];
+            renderDomainList();
+            modal.style.display = 'flex';
+        })
+        .catch(e => {
+            alert('加载域名失败: ' + e);
+            modal.style.display = 'flex';
+        });
+}
+
+function renderDomainList() {
+    const div = document.getElementById('domainList');
+    if (currentDomains.length === 0) {
+        div.innerHTML = '<p style="color:#999; text-align:center;">暂无域名</p>';
+        return;
+    }
+    
+    let html = '<div style="display:flex; flex-direction:column; gap:6px;">';
+    currentDomains.forEach((domain, idx) => {
+        html += `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:#f8f9fa; padding:8px; border-radius:4px; border-left:3px solid #0d6efd;">
+                <span style="font-family:monospace;">${domain}</span>
+                <button onclick="removeDomainFromRule(${idx})" style="background:#dc3545; padding:4px 8px; font-size:12px;">✕ 删除</button>
+            </div>
+        `;
+    });
+    html += '</div>';
+    div.innerHTML = html;
+}
+
+function addDomainToRule() {
+    const input = document.getElementById('newDomain');
+    const domain = input.value.trim();
+    
+    if (!domain) {
+        alert('请输入域名');
+        return;
+    }
+    
+    if (currentDomains.includes(domain)) {
+        alert('此域名已存在');
+        return;
+    }
+    
+    currentDomains.push(domain);
+    renderDomainList();
+    input.value = '';
+}
+
+function removeDomainFromRule(idx) {
+    currentDomains.splice(idx, 1);
+    renderDomainList();
+}
+
+function saveDomainChanges() {
+    const jobId = document.getElementById('domain_job_id').value;
+    const ruleId = document.getElementById('domain_rule_id').value;
+    const saveBtn = document.getElementById('saveAllBtn');
+    if (saveBtn) saveBtn.disabled = true;
+    fetch(`/api/domains/${jobId}/${ruleId}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({domains: currentDomains})
+    })
+    .then(r => {
+        if (!r.ok) return r.json().then(err => Promise.reject(err));
+        return r.json();
+    })
+    .then(d => {
+        if (!jobs[jobId]) jobs[jobId] = {};
+        jobs[jobId].rule_domains = currentDomains.slice();
+        alert('✅ 域名已保存');
+        closeDomainModal();
+        render();
+    })
+    .catch(e => {
+        const msg = (e && e.error) ? (e.error + (e.invalid ? ': ' + e.invalid.join(',') : '')) : e;
+        alert('保存失败: ' + msg);
+    })
+    .finally(() => {
+        if (saveBtn) saveBtn.disabled = false;
+    });
+}
+
+function closeDomainModal() {
+    document.getElementById('domainModal').style.display = 'none';
+    currentDomains = [];
+}
+
+function renderForwardRules(jobId, rules, deviceGroups) {
+    if (!rules || rules.length === 0) return '<p>暂无转发规则</p>';
+    
+    let html = `<table><thead><tr>
+        <th>名称</th>
+        <th>端口</th>
+        <th>目标</th>
+        <th>入口设备组</th>
+        <th>状态</th>
+        <th>流量 (GiB)</th>
+        <th>更新时间</th>
+        <th>操作</th>
+    </tr></thead><tbody>`;
+    
+    rules.forEach(r => {
+        const status = r.status === "ForwardRuleStatus_Normal" ? 
+            '<span class="status-ok">✅ 正常</span>' : r.status;
+        
+        let dgiDisplay = '—';
+        if (r.device_group_in != null) {
+            const tooltip = r.device_group_connect ? r.device_group_connect.replace(/\n/g, ' | ') : '';
+            dgiDisplay = `<a class="dg-link" href="#" onclick="showDgDetail('${jobId}', ${r.device_group_in}); return false;" title="${tooltip}">${r.device_group_name}</a>`;
+        }
+
+        html += `<tr>
+            <td>${r.name}</td>
+            <td>${r.listen_port}</td>
+            <td>${r.dest}</td>
+            <td>${dgiDisplay}</td>
+            <td>${status}</td>
+            <td>${r.traffic_gib}</td>
+            <td>${r.updated_at}</td>
+            <td><button class="edit" onclick="showDomainManager('${jobId}', '${r.id}', '${r.name}')">🔗 域名</button></td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    return html;
+}
+
+function render() {
+    const div = document.getElementById('jobs');
+    div.innerHTML = '';
+    for (const [id, job] of Object.entries(jobs)) {
+        const tgInfo = job.telegram_chat_id ? `Telegram: ${job.telegram_chat_id}` : '无 Telegram 通知';
+        // DNS 信息不再显示主域名
+        const userInfo = job.user_info ? `<pre style="background:#f1f3f5;padding:10px;border-radius:4px;">${job.user_info}</pre>` : '';
+        const forwardTable = job.forward_rules ? renderForwardRules(id, job.forward_rules, job.device_groups) : '';
+        div.innerHTML += `
+            <div class="job">
+                <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+                    <div style="flex:1;min-width:300px;">
+                        <strong>${job.name}</strong> (${job.username})<br>
+                        面板地址: <a href="${job.nya_host}" target="_blank">${job.nya_host}</a><br>
+                        ${tgInfo}<br>
+                        周期: ${job.interval_minutes} 分钟 ${job.enabled ? '✅' : '❌'}<br>
+                        最后执行: ${job.last_run || '从未'}
+                    </div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button onclick="runJob('${id}')">▶️ 运行</button>
+                        <button class="edit" onclick="editJob('${id}')">✏️ 编辑</button>
+                        <button class="delete" onclick="deleteJob('${id}')">🗑️ 删除</button>
+                    </div>
+                </div>
+                ${userInfo}
+                ${forwardTable}
+                ${job.last_log ? `<button onclick="toggleLog(this)">📜 日志</button><div class="logs" style="display:none;">${job.last_log}</div>` : ''}
+            </div>
+        `;
+    }
+}
+
+function saveAll() {
+    fetch('/api/config', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({jobs})
+    }).then(res => {
+        if (res.ok) {
+            alert('✅ 配置已保存并应用');
+        } else {
+            alert('❌ 保存失败');
+        }
+    }).catch(e => alert('网络错误: ' + e));
+}
+
+function loadJobs() {
+    fetch('/api/config')
+        .then(r => r.json())
+        .then(d => { 
+            jobs = d.jobs || {}; 
+            render(); 
+        })
+        .catch(e => { 
+            alert('加载失败: ' + e); 
+            jobs = {}; 
+            render(); 
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadJobs();
+});
+
+window.onclick = function(event) {
+    if (event.target.classList.contains('modal')) {
+        closeEditModal();
+        closeDgModal();
+    }
+};
+</script>
+</body>
+</html>

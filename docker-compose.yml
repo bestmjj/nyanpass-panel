@@ -1,0 +1,9 @@
+services:
+  nyanpass_viewer:
+    build: .
+    container_name: nyanpass_viewer
+    restart: unless-stopped
+    ports:
+    - 5000:5000
+    volumes:
+    - ./data/config.json:/app/config.json
