@@ -1,5 +1,0 @@
-APScheduler
-flask
-flask_httpauth
-pytest
-pytz

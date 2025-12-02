@@ -1,1 +1,3 @@
 data/config.json
+.pytest_cache/
+src/nyanpass_panel/__pycache__
