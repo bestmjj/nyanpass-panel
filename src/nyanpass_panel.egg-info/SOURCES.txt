@@ -1,0 +1,12 @@
+LICENSE
+README.md
+pyproject.toml
+setup.py
+src/nyanpass_panel/__init__.py
+src/nyanpass_panel/app.py
+src/nyanpass_panel.egg-info/PKG-INFO
+src/nyanpass_panel.egg-info/SOURCES.txt
+src/nyanpass_panel.egg-info/dependency_links.txt
+src/nyanpass_panel.egg-info/entry_points.txt
+src/nyanpass_panel.egg-info/requires.txt
+src/nyanpass_panel.egg-info/top_level.txt

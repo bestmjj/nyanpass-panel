@@ -1,3 +1,20 @@
+Metadata-Version: 2.1
+Name: nyanpass-panel
+Version: 1.0.0
+Summary: A web panel for monitoring and managing Nyanpass services
+Home-page: https://github.com/bestmjj/python/nyanpass-panel
+Author: Nyanpass
+Author-email: Nyanpass Team <example@nyanpass.com>
+License: MIT
+Project-URL: Homepage, https://github.com/bestmjj/python/nyanpass-panel
+Project-URL: Bug Tracker, https://github.com/bestmjj/python/nyanpass-panel/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
 # Nyanpass Panel
 
 一个用于监控和管理 Nyanpass 服务的 Web 面板。
@@ -5,26 +22,15 @@
 ## 项目结构
 
 ```
-├── Dockerfile
-├── LICENSE
-├── Makefile
-├── README.md
-├── data
-│   └── config.json
-├── docker-compose.yml
-├── pyproject.toml
-├── setup.py
-└── src
-    ├── main.py
-    ├── nyanpass_panel
-    │   ├── __init__.py
-    │   ├── __pycache__
-    │   │   ├── __init__.cpython-311.pyc
-    │   │   └── app.cpython-311.pyc
-    │   ├── app.py
-    │   └── static
-    │       └── index.html
-    └── requirements.txt
+src/
+├── main.py                 # 应用主入口
+├── requirements.txt        # 依赖包列表
+├── static/                 # 静态文件
+│   └── index.html          # 主页
+└── nyanpass_panel/         # 核心包
+    ├── __init__.py         # 包初始化文件
+    ├── app.py              # 核心应用类
+    └── requirements.txt    # 依赖包列表（副本）
 ```
 
 ## 功能特性
@@ -50,6 +56,16 @@ make compose-logs
 
 # 停止服务
 make compose-down
+```
+
+#### 使用多阶段构建
+
+```bash
+# 多阶段构建
+make docker-multi-stage-build
+
+# 运行容器
+make docker-run
 ```
 
 #### 使用传统构建
@@ -106,6 +122,7 @@ python main.py
 - `make compose-up` - 使用 docker-compose 启动服务
 - `make compose-down` - 停止 docker-compose 服务
 - `make compose-logs` - 查看 docker-compose 日志
+- `make docker-multi-stage-build` - 多阶段 docker 构建
 
 - `make help` - 显示帮助信息
 

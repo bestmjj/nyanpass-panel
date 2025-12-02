@@ -1,9 +1,22 @@
 services:
-  nyanpass_viewer:
-    build: .
-    container_name: nyanpass_viewer
-    restart: unless-stopped
+  nyanpass-panel:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-    - 5000:5000
+    - "5000:5000"
+    environment:
+    - CONFIG=/app/config/config.json
     volumes:
-    - ./data/config.json:/app/config.json
+    #- ./src:/app/src
+    # 配置文件，默认配置文件在当前目录 ./data/config.json,映射到容器的 /app/config/config.json，如果 config.json 不存在，程序会自动生成
+    - ./data/:/app/config/
+    command: ["python", "src/main.py"]
+
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
