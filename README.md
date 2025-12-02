@@ -1,3 +1,5 @@
+[toc]
+
 # Nyanpass Panel
 
 一个用于监控和管理 Nyanpass 服务的 Web 面板。
@@ -50,6 +52,11 @@ make compose-logs
 
 # 停止服务
 make compose-down
+```
+**Note:** 如果没有 `make` 命令或不想使用 `make`，请使用以下命令手动安装并运行：
+```bash
+# 构建并运行容器
+docker compose up -d --build
 ```
 
 #### 使用传统构建
@@ -122,3 +129,18 @@ python main.py
   "jobs": {}
 }
 ```
+
+## 效果展示
+### login 界面
+![login](./images/login.png)
+
+### 主页界面
+![index](./images/index.png)
+
+### 任务管理界面
+![job](./images/list.png)
+#### 域名管理界面
+![domain](./images/domain.png)
+#### 日志管理界面
+![log](./images/logs.png)
+
