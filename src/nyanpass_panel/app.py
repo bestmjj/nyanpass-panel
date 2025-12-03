@@ -279,8 +279,9 @@ class NyanpassPanel:
 
             # 获取面板地址
             nya_host = job.get("nya_host", "https://nya.trp.sh").strip().rstrip("/")
+
             # 获取 API 路径
-            api = "/api/v1"
+            api = "api/v1"
             # login 路径
             login_uri = f"{nya_host}/{api}/auth/login"
             # 设备组路径
