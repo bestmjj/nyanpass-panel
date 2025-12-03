@@ -144,3 +144,5 @@ python main.py
 #### 日志管理界面
 ![log](./images/logs.png)
 
+### TG 通知
+![tg](./images/notice_tg.png)
