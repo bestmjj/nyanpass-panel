@@ -31,23 +31,23 @@ class NyanpassPanel:
         sys.stdout = sys.stderr
 
         self.app.secret_key = secrets.token_hex(16)
-        self.app.permanent_session_lifetime = timedelta(minutes=30)
-        
-        # 注册路由
-        self._register_routes()
+        self.app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
         
         # 设置装饰器
         self.require_auth = self._create_auth_decorator()
+        
+        # 注册路由
+        self._register_routes()
 
     def _register_routes(self):
         """注册 Flask 路由"""
         self.app.add_url_rule('/login', 'login', self.login, methods=['GET', 'POST'])
         self.app.add_url_rule('/logout', 'logout', self.logout)
-        self.app.add_url_rule('/', 'index', self.index)
-        self.app.add_url_rule('/api/config', 'get_config', self.get_config, methods=['GET'])
-        self.app.add_url_rule('/api/config', 'update_config', self.update_config, methods=['POST'])
-        self.app.add_url_rule('/api/run/<job_id>', 'trigger_run', self.trigger_run, methods=['POST'])
-        self.app.add_url_rule('/api/domains/<job_id>/<rule_id>', 'manage_rule_domains', self.manage_rule_domains, methods=['GET', 'POST', 'DELETE'])
+        self.app.add_url_rule('/', 'index', self.require_auth(self.index))
+        self.app.add_url_rule('/api/config', 'get_config', self.require_auth(self.get_config), methods=['GET'])
+        self.app.add_url_rule('/api/config', 'update_config', self.require_auth(self.update_config), methods=['POST'])
+        self.app.add_url_rule('/api/run/<job_id>', 'trigger_run', self.require_auth(self.trigger_run), methods=['POST'])
+        self.app.add_url_rule('/api/domains/<job_id>/<rule_id>', 'manage_rule_domains', self.require_auth(self.manage_rule_domains), methods=['GET', 'POST', 'DELETE'])
 
     def _create_auth_decorator(self):
         """创建认证装饰器"""
