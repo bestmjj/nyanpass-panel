@@ -16,6 +16,7 @@ import urllib.parse
 import re
 import pytz
 import sys
+import ipaddress
 
 
 class NyanpassPanel:
@@ -388,14 +389,17 @@ class NyanpassPanel:
                             continue
 
                         # 创建正则表达式，匹配 ipv4 地址
-                        # todo, 如果有多个呢？
                         # 匹配 IPv4 地址的正则表达式
                         ip_pattern = r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'
-                        # 查找第一个匹配项
-                        match = re.search(ip_pattern, dg["connect_host"].strip())
-                        if match:
-                            rule_ip = match.group()
-
+                        ips = dg["connect_host"].strip()
+                        # 查找第一个匹配的ip
+                        for candidate in re.findall(ip_pattern, ips):
+                            try:
+                                rule_ip = str(ipaddress.IPv4Address(candidate))
+                                #print(str(ip))
+                                break
+                            except ipaddress.AddressValueError:
+                                continue
                         # rule_ip = dg["connect_host"].strip()
                         domains = rule_domains.get(rule_id, [])
                         if not domains:
