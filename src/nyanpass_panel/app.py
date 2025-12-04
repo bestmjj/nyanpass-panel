@@ -386,7 +386,17 @@ class NyanpassPanel:
                         if not dg or not dg.get("connect_host"):
                             log(f"规则 {rule_id} 的设备组 {dgi} 无 connect_host，跳过")
                             continue
-                        rule_ip = dg["connect_host"].strip()
+
+                        # 创建正则表达式，匹配 ipv4 地址
+                        # todo, 如果有多个呢？
+                        # 匹配 IPv4 地址的正则表达式
+                        ip_pattern = r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'
+                        # 查找第一个匹配项
+                        match = re.search(ip_pattern, dg["connect_host"].strip())
+                        if match:
+                            rule_ip = match.group()
+
+                        # rule_ip = dg["connect_host"].strip()
                         domains = rule_domains.get(rule_id, [])
                         if not domains:
                             continue
