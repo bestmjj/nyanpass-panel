@@ -118,47 +118,83 @@ class NyanpassPanel:
     def get_forward_rules(self, nya_host, token, device_groups_map):
         """获取转发规则列表"""
         url = f"{nya_host.rstrip('/')}/api/v1/user/forward?page=1&size=100"
-        req = urllib.request.Request(url, headers={"Authorization": token})
-        with urllib.request.urlopen(req, timeout=30) as res:
-            data = json.load(res)
-        if data.get("code") != 0:
-            raise Exception(f"获取转发规则失败: {data.get('msg', 'unknown')}")
-        rules = []
-        for item in data.get("data", []):
-            try:
-                config = json.loads(item.get("config", "{}"))
-                dest_list = config.get("dest", [])
-                dest_str = ", ".join(dest_list)
-            except:
-                dest_str = "解析失败"
-            traffic_gib = item.get("traffic_used", 0) / (1024 ** 3)
-            dgi = item.get("device_group_in")
-            device_group_info = device_groups_map.get(dgi) if device_groups_map else None
-            dgi_name = device_group_info["name"] if device_group_info else f"ID {dgi}"
-            dgi_connect = device_group_info.get("connect_host", "") if device_group_info else ""
-            rules.append({
-                "id": item["id"],
-                "name": item["name"],
-                "listen_port": item["listen_port"],
-                "dest": dest_str,
-                "status": item["status"],
-                "traffic_gib": round(traffic_gib, 2),
-                "updated_at": item.get("display_updated_at", ""),
-                "device_group_in": dgi,
-                "device_group_name": dgi_name,
-                "device_group_connect": dgi_connect,
-            })
-        return rules
+        
+        # 添加完整的请求头以模拟浏览器请求
+        headers = {
+            "Authorization": token,
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Accept": "application/json",
+            "Origin": nya_host,
+            "Referer": f"{nya_host}/",
+        }
+        req = urllib.request.Request(url, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as res:
+                data = json.load(res)
+            if data.get("code") != 0:
+                raise Exception(f"获取转发规则失败: {data.get('msg', 'unknown')}")
+            rules = []
+            for item in data.get("data", []):
+                try:
+                    config = json.loads(item.get("config", "{}"))
+                    dest_list = config.get("dest", [])
+                    dest_str = ", ".join(dest_list)
+                except:
+                    dest_str = "解析失败"
+                traffic_gib = item.get("traffic_used", 0) / (1024 ** 3)
+                dgi = item.get("device_group_in")
+                device_group_info = device_groups_map.get(dgi) if device_groups_map else None
+                dgi_name = device_group_info["name"] if device_group_info else f"ID {dgi}"
+                dgi_connect = device_group_info.get("connect_host", "") if device_group_info else ""
+                rules.append({
+                    "id": item["id"],
+                    "name": item["name"],
+                    "listen_port": item["listen_port"],
+                    "dest": dest_str,
+                    "status": item["status"],
+                    "traffic_gib": round(traffic_gib, 2),
+                    "updated_at": item.get("display_updated_at", ""),
+                    "device_group_in": dgi,
+                    "device_group_name": dgi_name,
+                    "device_group_connect": dgi_connect
+                })
+            return rules
+        except urllib.error.HTTPError as e:
+            if e.code == 403:
+                error_details = e.read().decode('utf-8')
+                print(f"获取转发规则失败: HTTP 403 禁止访问，详情: {error_details}")
+                raise Exception(f"获取转发规则失败: HTTP 403 禁止访问")
+            else:
+                print(f"获取转发规则失败: HTTP {e.code} {e.reason}")
+                raise Exception(f"获取转发规则失败: HTTP {e.code} {e.reason}")
+        except Exception as e:
+            print(f"获取转发规则失败: {e}")
+            raise Exception(f"获取转发规则失败: {e}")
 
     def get_traffic_statistic(self, nya_host, token):
         """获取流量统计数据"""
         url = f"{nya_host.rstrip('/')}/api/v1/user/statistic"
-        req = urllib.request.Request(url, headers={"Authorization": token})
+        
+        # 添加完整的请求头以模拟浏览器请求
+        headers = {
+            "Authorization": token,
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Accept": "application/json",
+            "Origin": nya_host,
+            "Referer": f"{nya_host}/",
+        }
+        req = urllib.request.Request(url, headers=headers)
         try:
             with urllib.request.urlopen(req, timeout=30) as res:
                 data = json.load(res)
             if data.get("code") == 0:
                 return data.get("data", {})
+        except urllib.error.HTTPError as e:
+            if e.code == 403:
+                error_details = e.read().decode('utf-8')
+                print(f"[Stat] 获取流量统计失败: HTTP 403 禁止访问，详情: {error_details}")
+            else:
+                print(f"[Stat] 获取流量统计失败: HTTP {e.code} {e.reason}")
         except Exception as e:
             print(f"[Stat] 获取流量统计失败: {e}")
         return {}
@@ -204,17 +240,23 @@ class NyanpassPanel:
             # 查询现有 DNS 记录
             dns_url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records?type=A&name={urllib.parse.quote(name)}"
             dns_req = urllib.request.Request(dns_url, headers={"Authorization": f"Bearer {cf_token}"})
-            with urllib.request.urlopen(dns_req, timeout=30) as res:
-                dns_data = json.load(res)
+            try:
+                with urllib.request.urlopen(dns_req, timeout=30) as res:
+                    dns_data = json.load(res)
+            except urllib.error.HTTPError as e:
+                if e.code == 403:
+                    return False, f"CF API 403 Error: Check Cloudflare Token permissions", False
+                else:
+                    return False, f"CF API Error {e.code}: {e.reason}", False
             
             if not (dns_data.get("success") and dns_data.get("result")):
-                return False, f"未找到 DNS 记录: {name}", False
+                return False, f"Could not find DNS record: {name}", False
 
             record = dns_data["result"][0]
             current_ip = record.get("content", "")
             
             if current_ip == ip:
-                return True, f"✓ {name} 已是最新的: {ip}", False
+                return True, f"✓ {name} is up to date: {ip}", False
 
             # IP 不同，执行更新
             update_data = json.dumps({
@@ -231,17 +273,29 @@ class NyanpassPanel:
                 method="PUT",
                 headers={"Authorization": f"Bearer {cf_token}", "Content-Type": "application/json"}
             )
-            with urllib.request.urlopen(update_req, timeout=30) as res:
-                result = json.load(res)
-            
+            try:
+                with urllib.request.urlopen(update_req, timeout=30) as res:
+                    result = json.load(res)
+            except urllib.error.HTTPError as e:
+                if e.code == 403:
+                    return False, f"Failed to update DNS record: 403 Forbidden, check Cloudflare Token permissions", False
+                else:
+                    error_body = getattr(e, 'read', lambda: b'Unknown error')()
+                    try:
+                        error_data = json.loads(error_body.decode('utf-8'))
+                        errors = str(error_data)
+                    except:
+                        errors = str(error_body)
+                    return False, f"Failed to update DNS record: HTTP {e.code} {e.reason}, Details: {errors}", False
+
             if result.get("success"):
-                return True, f"已更新 {name} → {ip}", True
+                return True, f"Updated {name} -> {ip}", True
             else:
-                errors = result.get("errors", "未知错误")
-                return False, f"更新失败: {errors}", False
+                errors = result.get("errors", "Unknown error")
+                return False, f"Update failed: {errors}", False
 
         except Exception as e:
-            return False, f"异常: {e}", False
+            return False, f"Exception: {e}", False
     def run_job(self, job_id, job):
         """
         执行定时任务的主要函数
@@ -259,25 +313,104 @@ class NyanpassPanel:
             def login(host, username, password, headers):
                 """登录面板"""
                 data = json.dumps({"username": username, "password": password}).encode()
-                req = urllib.request.Request(host, data=data, headers=headers)
-                with urllib.request.urlopen(req, timeout=30) as res:
-                    token = json.load(res)["data"]
-                return token
+                
+                # 添加更完整的浏览器样式请求头
+                full_headers = {
+                    "Content-Type": "application/json",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                    "Accept": "application/json",
+                    "Origin": job.get("nya_host", "https://nya.trp.sh").strip().rstrip("/"),
+                    "Referer": f"{job.get('nya_host', 'https://nya.trp.sh').strip().rstrip('/')}/",
+                    **headers  # 包含原始的headers
+                }
+                
+                req = urllib.request.Request(host, data=data, headers=full_headers)
+                try:
+                    with urllib.request.urlopen(req, timeout=30) as res:
+                        response_data = res.read().decode('utf-8')
+                        response_json = json.loads(response_data)
+                        
+                        # 检查响应是否包含错误代码
+                        if response_json.get("code") != 0:  # 假设0表示成功
+                            error_code = response_json.get("code")
+                            error_msg = response_json.get("message", "Unknown error")
+                            raise Exception(f"登录失败: API返回错误代码 {error_code} - {error_msg}")
+                            
+                        token = response_json["data"]
+                        return token
+                except urllib.error.HTTPError as e:
+                    if e.code == 403:
+                        error_details = e.read().decode('utf-8')
+                        log(f"Nyanpass面板返回HTTP 403错误，详情: {error_details}")
+                        
+                        # 检查是否是错误代码1010
+                        if "1010" in error_details:
+                            raise Exception(f"登录失败: API返回错误代码1010，这通常表示访问被拒绝，可能需要启用API访问权限或存在CSRF保护")
+                        else:
+                            raise Exception(f"登录失败: HTTP 403 禁止访问，可能是请求被防火墙或反机器人系统拦截")
+                    elif e.code == 401:
+                        raise Exception(f"登录失败: HTTP 401 认证失败，请检查用户名和密码是否正确")
+                    else:
+                        error_details = e.read().decode('utf-8')
+                        raise Exception(f"Login failed: HTTP {e.code} {e.reason}, details: {error_details}")
             
             def get_device_groups(host, token):
-                    """获取设备组"""
-                    req_dev = urllib.request.Request(host, headers={"Authorization": token})
+                """获取设备组"""
+                try:
+                    # 添加完整的请求头以模拟浏览器请求
+                    headers = {
+                        "Authorization": token,
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                        "Accept": "application/json",
+                        "Origin": job.get("nya_host", "https://nya.trp.sh").strip().rstrip("/"),
+                        "Referer": f"{job.get('nya_host', 'https://nya.trp.sh').strip().rstrip('/')}/",
+                    }
+                    req_dev = urllib.request.Request(host, headers=headers)
                     with urllib.request.urlopen(req_dev, timeout=30) as res:
                         dev_data = json.load(res)["data"]
                     return dev_data
+                except urllib.error.HTTPError as e:
+                    if e.code == 403:
+                        error_details = e.read().decode('utf-8')
+                        log(f"获取设备组失败: HTTP 403 禁止访问，详情: {error_details}")
+                        
+                        # 检查是否是错误代码1010
+                        if "1010" in error_details:
+                            raise Exception(f"获取设备组失败: API返回错误代码1010，这通常表示访问被拒绝，可能需要启用API访问权限或存在CSRF保护")
+                        else:
+                            raise Exception(f"获取设备组失败: HTTP 403 禁止访问，API令牌可能权限不足或已过期")
+                    else:
+                        error_details = e.read().decode('utf-8')
+                        raise Exception(f"获取设备组失败: HTTP {e.code} {e.reason}, details: {error_details}")
 
             def get_user_info(host, token):
                 """获取用户信息"""
-                req = urllib.request.Request(host, headers={"Authorization": token})
-                with urllib.request.urlopen(req, timeout=30) as res:
-                    user_info = json.load(res)["data"]
-                return user_info
-
+                try:
+                    # 添加完整的请求头以模拟浏览器请求
+                    headers = {
+                        "Authorization": token,
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                        "Accept": "application/json",
+                        "Origin": job.get("nya_host", "https://nya.trp.sh").strip().rstrip("/"),
+                        "Referer": f"{job.get('nya_host', 'https://nya.trp.sh').strip().rstrip('/')}/",
+                    }
+                    req = urllib.request.Request(host, headers=headers)
+                    with urllib.request.urlopen(req, timeout=30) as res:
+                        user_info = json.load(res)["data"]
+                    return user_info
+                except urllib.error.HTTPError as e:
+                    if e.code == 403:
+                        error_details = e.read().decode('utf-8')
+                        log(f"获取用户信息失败: HTTP 403 禁止访问，详情: {error_details}")
+                        
+                        # 检查是否是错误代码1010
+                        if "1010" in error_details:
+                            raise Exception(f"获取用户信息失败: API返回错误代码1010，这通常表示访问被拒绝，可能需要启用API访问权限或存在CSRF保护")
+                        else:
+                            raise Exception(f"获取用户信息失败: HTTP 403 禁止访问，API令牌可能权限不足或已过期")
+                    else:
+                        error_details = e.read().decode('utf-8')
+                        raise Exception(f"获取用户信息失败: HTTP {e.code} {e.reason}, details: {error_details}")
             # 获取面板地址
             nya_host = job.get("nya_host", "https://nya.trp.sh").strip().rstrip("/")
 
@@ -433,9 +566,27 @@ class NyanpassPanel:
             else:
                 log("未配置 Cloudflare Token，跳过 DNS 更新")
 
-            req4 = urllib.request.Request(f"{nya_host}/api/v1/auth/logout", method="POST", headers={"Authorization": token})
-            urllib.request.urlopen(req4, timeout=5)
-            log("已登出")
+            req_logout = urllib.request.Request(
+                f"{nya_host}/api/v1/auth/logout", 
+                method="POST", 
+                headers={
+                    "Authorization": token,
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                    "Accept": "application/json",
+                    "Origin": nya_host,
+                    "Referer": f"{nya_host}/",
+                }
+            )
+            try:
+                urllib.request.urlopen(req_logout, timeout=5)
+                log("已登出")
+            except urllib.error.HTTPError as e:
+                if e.code == 403:
+                    log("登出失败: HTTP 403 禁止访问，可能因API令牌权限问题")
+                else:
+                    log(f"登出失败: HTTP {e.code} {e.reason}")
+            except Exception as e:
+                log(f"登出时出现其他错误: {str(e)}")
 
             config = self.load_config()
             if job_id in config["jobs"]:
@@ -622,7 +773,7 @@ class NyanpassPanel:
             if job.get("telegram_bot_token") == "********":
                 job["telegram_bot_token"] = orig_job.get("telegram_bot_token", "")
             
-            # ✅ 关键修复：始终保留 rule_domains（不管前端是否发送）
+            #  关键修复：始终保留 rule_domains（不管前端是否发送）
             job["rule_domains"] = orig_job.get("rule_domains", {})
             
             new_jobs[job_id] = job
@@ -698,7 +849,7 @@ class NyanpassPanel:
             initial_password = secrets.token_urlsafe(16)
             # 默认时区
             timezone = "Asia/Shanghai"
-            print(f"⚠️  未找到 {self.CONFIG_FILE}，已创建初始配置文件 {self.CONFIG_FILE}，请修改 auth 部分后重启！")
+            print(f"  未找到 {self.CONFIG_FILE}，已创建初始配置文件 {self.CONFIG_FILE}，请修改 auth 部分后重启！")
             initial_config = {
                 "auth": {
                 "username": initial_username,
@@ -708,7 +859,7 @@ class NyanpassPanel:
                 "jobs": {}
             }
             self.save_config(initial_config)
-            print("✅ 已创建初始配置文件 config.json，请修改 auth 部分后重启！")
+            print(" 已创建初始配置文件 config.json，请修改 auth 部分后重启！")
 
     def run(self):
         """运行应用"""
